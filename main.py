@@ -81,7 +81,7 @@ def find_thanks(message:discord.Message)->bool:
     else:
         return False
 
-@bot.command(name='rep')
+@bot.command(name='rep',help = "gets the rep for a specific user")
 async def display_rep(ctx:commands.Context):
     if len(ctx.message.mentions)>1:
         await ctx.send("{0}, you can only get rep for one user at a time".format(ctx.author.mention))
@@ -93,7 +93,7 @@ async def display_rep(ctx:commands.Context):
         await ctx.send("{0} has {1} rep".format(ctx.author.mention, author_rep))
     # await ctx.send("I got your message")
 
-@bot.command(name='setrep')
+@bot.command(name='setrep', help = "sets the rep for the mentioned user")
 @commands.has_role('admin')
 async def set_rep(ctx:commands.Context, member:discord.Member, rep:int):
 
@@ -101,7 +101,7 @@ async def set_rep(ctx:commands.Context, member:discord.Member, rep:int):
 
     await ctx.send("{0}'s rep is now {1}".format(member.mention, rep))
 
-@bot.command(name='getrep')
+@bot.command(name='getrep', help = 'gets the rep for all users')
 async def get_rep_for_all_users(ctx:commands.Context):
     
     ordered_members = sql.get_users_by_rep()
