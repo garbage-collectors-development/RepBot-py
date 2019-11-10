@@ -1,6 +1,7 @@
 import os
 
 import discord
+from disputils import BotEmbedPaginator
 from discord.ext import commands
 import logging
 from dotenv import load_dotenv
@@ -8,14 +9,14 @@ import pathlib
 import datetime
 
 import persistance
-from member import Member
 
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 # print(TOKEN)
-GUILD = os.getenv('GUILD')
+GUILD_NAME = os.getenv('GUILD')
 GUILD_ID = os.getenv('GUILD_ID')
 DB_LOCATION = os.getenv('DB_LOCATION')
+current_guild = None
 # print(GUILD)
 
 # bot = commands.Bot(command_prefix='!')
@@ -26,21 +27,19 @@ sql = persistance.Persistance(db_file)
 @bot.listen()
 async def on_ready():
 
-    global GUILD_ID
+    global current_guild
+
+    for guild in bot.guilds:
+        if guild.name == GUILD_NAME:
+            sql.guild = guild
+            print(GUILD_ID)
+            break
 
 
     current_users = sql.users
-    server_members = tuple(Member(user.id, user.name, user.discriminator) for user in bot.get_all_members())
-    for member in server_members:
-        if member not in current_users:
-            sql.add_new_user(member)
-
-
-    for guild in bot.guilds:
-        if guild.name == GUILD:
-            GUILD_ID = guild.id
-            print(GUILD_ID)
-            break
+    missing_users=tuple(member for member in bot.get_all_members() if member not in current_users)
+    for member in missing_users:
+        sql.add_new_user(member)
     
     print("{0} is connected to the following guild".format(bot.user))
     print("{0}(id: {1})".format(guild.name, guild.id))
@@ -101,7 +100,23 @@ async def set_rep(ctx:commands.Context, member:discord.Member, rep:int):
     sql.set_rep(member, rep)
 
     await ctx.send("{0}'s rep is now {1}".format(member.mention, rep))
+
+@bot.command(name='getrep')
+async def get_rep_for_all_users(ctx:commands.Context):
     
+    ordered_members = sql.get_users_by_rep()
+    # message = "\n".join([f'#{rank:0>2}:{member.rep:>7} - {member.member.name}#{member.member.discriminator}' for rank, member in ordered_members.items()])
+    # message = "```\n{0}```".format(message)
+    # #await ctx.send(message)
+
+    # embed = discord.Embed(
+    #     title = "Reputation Leaderboard",
+    #     description = message
+    # )
+    embeds = [discord.Embed(title = "Reputation Leaderbpard", description=f'`#{rank:0>2}:{member.rep:>7} - {member.member.name}#{member.member.discriminator}`') for rank, member in ordered_members.items()]
+
+    paginator = BotEmbedPaginator(ctx, embeds)
+    await paginator.run()
 
 
 

@@ -2,6 +2,7 @@
 the database."""
 
 from dataclasses import dataclass
+import json
 
 @dataclass
 class Member:
@@ -9,6 +10,7 @@ class Member:
     id: str
     name: str
     discriminator: str
+    rep: int=None
 
-    def __repr__(self):
-        return {'id':self.id,'name':'{0}#{1}'.format(self.name, self.discriminator)}
+    # def __repr__(self):
+    #     return json.dumps({'id':self.id,'name':'{0}#{1}'.format(self.name, self.discriminator)})

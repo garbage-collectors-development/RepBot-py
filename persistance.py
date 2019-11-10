@@ -2,17 +2,21 @@ import sqlite3
 import pathlib
 import logging
 import datetime
+from collections import namedtuple
 
-from member import Member
+import discord 
 
 
 logger = logging.getLogger(__name__)
 
 class Persistance:
 
+    member_rep = namedtuple('MemberRep', ['member','rep'])
     DATE_FORMAT = '%m/%d/%Y %H:%M:%S.%f'
 
-    def __init__(self, db_file:pathlib.Path):
+    def __init__(self, db_file:pathlib.Path, guild:discord.Guild=None):
+
+        self.guild = guild
 
         if not isinstance(db_file, pathlib.Path):
             raise TypeError("db_file must be a Pathlib object")
@@ -72,7 +76,7 @@ class Persistance:
         
         self.__execute_query(sql_statement, True)
 
-    def add_new_user(self, member:Member):
+    def add_new_user(self, member:discord.Member):
         """Adds a new user to the database"""
 
         sql_statement = """
@@ -95,7 +99,16 @@ class Persistance:
         self.__execute_query(sql_statement)
         results = self._cursor.fetchall()
         #return [{row['d_id']:'{0}#{1}'.format(row['d_name'], row['d_discriminator'])} for row in results]
-        return tuple(Member(row['d_id'],row['d_name'],str(row['d_discriminator'])) for row in results)
+        return tuple(self.guild.get_member(row['d_id']) for row in results)
+
+    def get_users_by_rep(self):
+        """returns a list of all users by rep whose rep is not 0"""
+
+        sql_statement = "SELECT d_id, rep FROM 'users' WHERE rep > 0 ORDER BY rep DESC"
+
+        self.__execute_query(sql_statement)
+        results = self._cursor.fetchall()
+        return {index:self.member_rep(self.guild.get_member(row['d_id']),row['rep']) for index, row in enumerate(results,1)}
 
     def add_rep(self, users:list):
         """Adds rep to the called users and adds a time stamp to the requestor"""
@@ -110,7 +123,7 @@ class Persistance:
             logger.exception("Error committing job")
             return False
         
-    def set_rep(self, member:Member, rep:int):
+    def set_rep(self, member:discord.Member, rep:int):
         """Manually sets the rep for a user"""
 
         sql_statement = "UPDATE users SET rep = {0} where users.d_id = {1}".format(rep, member.id)
@@ -122,7 +135,7 @@ class Persistance:
         except:
             return False
 
-    def get_rep(self, member:Member):
+    def get_rep(self, member:discord.Member):
         """Gets the current rep for a user"""
 
         sql_statement = "SELECT rep FROM users WHERE users.d_id = {0}".format(member.id)
@@ -132,7 +145,7 @@ class Persistance:
         result = self._cursor.fetchone()
         return result['rep']
 
-    def get_last_used(self, member:Member):
+    def get_last_used(self, member:discord.Member):
         """Gets the 'last_used' filed value as a datetime object"""
 
         sql_statement = """SELECT last_used FROM users WHERE users.d_id = {0}""".format(
@@ -145,7 +158,7 @@ class Persistance:
         return datetime.datetime.strptime(result['last_used'],self.DATE_FORMAT)
 
 
-    def set_last_used(self, member:Member):
+    def set_last_used(self, member:discord.Member):
         """Set the 'last_used' field with the current datetime"""
 
         sql_statement = """UPDATE users SET last_used = '{0}' WHERE users.d_id = {1}""".format(
