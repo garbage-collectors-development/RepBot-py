@@ -97,10 +97,12 @@ async def set_rep(ctx:commands.Context, member:discord.Member, rep:int):
 
 @bot.command(name='getrep', help = 'gets the rep for all users')
 async def get_rep_for_all_users(ctx:commands.Context):
-    """"""
+    """Get rep for all users containing rep and paginate it in the chat
+    A maximum of 25 users will be displayed on each page"""
 
     def get_split_members(members:dict)->[dict]:
-        """"""
+        """Splits the members dict into a list of dicts with a maximum of 25
+        Member objects in each dict"""
         member_array = []
         for index, member in members.items():
             if (index-1) % 25 == 0:
@@ -110,7 +112,8 @@ async def get_rep_for_all_users(ctx:commands.Context):
         return member_array
 
     def get_embeds(member_array:[dict])->(str,):
-        """"""
+        """Turns the member_array into a list of embed objects for the 
+        pagination tool to use"""
 
         description = '#{0:0>3}:{1:>7} - {2}#{3}'
 
