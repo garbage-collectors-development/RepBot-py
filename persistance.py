@@ -101,7 +101,7 @@ class Persistance:
         #return [{row['d_id']:'{0}#{1}'.format(row['d_name'], row['d_discriminator'])} for row in results]
         return tuple(self.guild.get_member(row['d_id']) for row in results)
 
-    def get_users_by_rep(self):
+    def get_users_by_rep(self)->{int:namedtuple}:
         """returns a list of all users by rep whose rep is not 0"""
 
         sql_statement = "SELECT d_id, rep FROM 'users' WHERE rep > 0 ORDER BY rep DESC"
@@ -110,20 +110,26 @@ class Persistance:
         results = self._cursor.fetchall()
         return {index:self.member_rep(self.guild.get_member(row['d_id']),row['rep']) for index, row in enumerate(results,1)}
 
-    def add_rep(self, users:list):
+    def add_rep(self, users:list, max_user_add:int=None)->bool:
         """Adds rep to the called users and adds a time stamp to the requestor"""
 
         sql_statement = """UPDATE users SET rep = rep + 1 WHERE users.d_id = {0}"""
         try:
-            for user in users:
-                self.__execute_query(sql_statement.format(user.id), True)
-
+            if max_user_add==None:
+                for user in users:
+                    self.__execute_query(sql_statement.format(user.id), True)
+            else:
+                for index, user in enumerate(users):
+                    if index < max_user_add:
+                        self.__execute_query(sql_statement.format(user.id), True)
+                    else:
+                        return True
             return True
         except:
             logger.exception("Error committing job")
             return False
         
-    def set_rep(self, member:discord.Member, rep:int):
+    def set_rep(self, member:discord.Member, rep:int)->bool:
         """Manually sets the rep for a user"""
 
         sql_statement = "UPDATE users SET rep = {0} where users.d_id = {1}".format(rep, member.id)
@@ -135,7 +141,7 @@ class Persistance:
         except:
             return False
 
-    def get_rep(self, member:discord.Member):
+    def get_rep(self, member:discord.Member)->int:
         """Gets the current rep for a user"""
 
         sql_statement = "SELECT rep FROM users WHERE users.d_id = {0}".format(member.id)
@@ -145,7 +151,7 @@ class Persistance:
         result = self._cursor.fetchone()
         return result['rep']
 
-    def get_last_used(self, member:discord.Member):
+    def get_last_used(self, member:discord.Member)->datetime.datetime:
         """Gets the 'last_used' filed value as a datetime object"""
 
         sql_statement = """SELECT last_used FROM users WHERE users.d_id = {0}""".format(
@@ -167,12 +173,3 @@ class Persistance:
         )
 
         self.__execute_query(sql_statement, True)
-
-
-
-
-if __name__ == '__main__':
-    db_file = pathlib.Path('c:/temp/temp.db')
-    print(db_file.absolute())
-    db=Persistance(db_file.absolute())
-    print(db.users)

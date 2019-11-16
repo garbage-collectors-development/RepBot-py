@@ -17,6 +17,7 @@ GUILD_NAME = os.getenv('GUILD')
 GUILD_ID = os.getenv('GUILD_ID')
 DB_LOCATION = os.getenv('DB_LOCATION')
 current_guild = None
+max_given_rep = 4
 # print(GUILD)
 
 # bot = commands.Bot(command_prefix='!')
@@ -49,14 +50,6 @@ async def on_message(message:discord.Message):
     if message.author == bot.user:
         return
         
-        # if message.content.startswith('-rep'):
-        #     if len(message.mentions)==0:
-        #         await message.channel.send("get rep for {0}".format(message.author.mention))
-        #     elif len(message.mentions)==1:
-        #         await message.channel.send("get rep for {0}".format(message.mentions[0].mention))
-        #     else:
-        #         await message.channel.send("You can only get rep for 1 user at a time")
-        
     if len(message.mentions)>0 and find_thanks(message):
         now = datetime.datetime.now()
         hold_time = now - datetime.timedelta(minutes=12)
@@ -70,8 +63,9 @@ async def on_message(message:discord.Message):
         else:
             # not allowing rep more frequent than every 12 minutes.
             return
-        for member in message.mentions:
-            await message.channel.send("{0} you got some rep".format(member.mention))
+        message_str = '\n'.join(tuple("gave +1 rep to **{0}**".format(member.name, member.discriminator) for index, member in enumerate(message.mentions)
+                    if index < max_given_rep))
+        await message.channel.send(message_str)
 
 def find_thanks(message:discord.Message)->bool:
     THANKS = ('thank', 'thanks', 'ty')
@@ -103,23 +97,44 @@ async def set_rep(ctx:commands.Context, member:discord.Member, rep:int):
 
 @bot.command(name='getrep', help = 'gets the rep for all users')
 async def get_rep_for_all_users(ctx:commands.Context):
+    """"""
+
+    def get_split_members(members:dict)->[dict]:
+        """"""
+        member_array = []
+        for index, member in members.items():
+            if (index-1) % 25 == 0:
+                member_array.append(dict())
+            member_array[-1][index] = member
+
+        return member_array
+
+    def get_embeds(member_array:[dict])->(str,):
+        """"""
+
+        description = '#{0:0>3}:{1:>7} - {2}#{3}'
+
+        embed_strings = []
+        for dictionary in member_array:
+            temp_str='```{0}```'.format(
+                '\n'.join(
+                    [description.format(rank,member.rep,member.member.name, member.member.discriminator)
+                        for rank, member in dictionary.items()]
+                )
+            )
+            embed_strings.append(temp_str)
+
+        embeds=tuple(discord.Embed(title="Reputation Leaderboard", description=string) for string in embed_strings)
+        
+        return embeds
     
     ordered_members = sql.get_users_by_rep()
-    # message = "\n".join([f'#{rank:0>2}:{member.rep:>7} - {member.member.name}#{member.member.discriminator}' for rank, member in ordered_members.items()])
-    # message = "```\n{0}```".format(message)
-    # #await ctx.send(message)
-
-    # embed = discord.Embed(
-    #     title = "Reputation Leaderboard",
-    #     description = message
-    # )
-    embeds = [discord.Embed(title = "Reputation Leaderbpard", description=f'`#{rank:0>2}:{member.rep:>7} - {member.member.name}#{member.member.discriminator}`') for rank, member in ordered_members.items()]
-
+    member_array = get_split_members(ordered_members)
+    embeds = get_embeds(member_array)
     paginator = BotEmbedPaginator(ctx, embeds)
     await paginator.run()
 
 
-
-logger = logging.basicConfig(level='DEBUG')
-
-bot.run(TOKEN)
+if __name__ == '__main__':
+    logger = logging.basicConfig(level='DEBUG')
+    bot.run(TOKEN)
